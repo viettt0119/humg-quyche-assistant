@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.coverage
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+
+# Data: PDF gốc để ngoài git (ghi nguồn trong docs/data-sources.md)
+data/raw/*
+!data/raw/.gitkeep
+# Báo cáo eval sinh tự động; báo cáo nào muốn giữ thì copy sang docs/ hoặc ghi vào EXPERIMENTS.md
+eval/reports/*
+!eval/reports/.gitkeep
