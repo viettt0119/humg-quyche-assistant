@@ -9,7 +9,7 @@ from quyche import retrieval
 from quyche.cli import app
 from quyche.evaluation.runner import evaluate, load_questions
 from quyche.jsonl import write_jsonl
-from quyche.schemas import Chunk, EvalQuestion, GoldRef, SearchHit
+from quyche.schemas import Chunk, Document, EvalQuestion, GoldRef, SearchHit
 
 runner = CliRunner()
 
@@ -48,6 +48,34 @@ def test_ingest_without_pdfs_explains_what_to_do(workspace):
     result = runner.invoke(app, ["ingest"])
     assert result.exit_code == 1
     assert "Chưa có PDF" in result.output
+
+
+def test_inspect_without_pdfs_explains_what_to_do(workspace):
+    result = runner.invoke(app, ["inspect"])
+    assert result.exit_code == 1
+    assert "Chưa có PDF" in result.output
+
+
+def test_inspect_dumps_raw_text_per_page(workspace, monkeypatch):
+    (workspace / "raw").mkdir()
+    (workspace / "raw" / "quy-che-mau.pdf").write_bytes(b"")  # nội dung do load_document giả trả về
+    pages = ["Chương I\nĐiều 1. Phạm vi", "theo quy định tại\nĐiều 1 của quy chế này.\nĐiều 2. A"]
+    monkeypatch.setattr(
+        "quyche.cli.load_document",
+        lambda path: Document(doc_id=path.stem, source_path=str(path), pages=pages),
+    )
+    result = runner.invoke(app, ["inspect"])
+    assert result.exit_code == 0, result.output
+    assert "quy-che-mau" in result.output
+    dump = (workspace / "text" / "quy-che-mau.txt").read_text(encoding="utf-8")
+    assert "===== Trang 1 =====\nChương I" in dump
+    assert "===== Trang 2 =====" in dump
+    # Ước lượng thô đếm cả tham chiếu bị xuống dòng: 3 dòng, dù chỉ có 2 Điều thật.
+    row = next(line for line in result.output.splitlines() if "quy-che-mau" in line)
+    cells = [cell.strip() for cell in row.split("│") if cell.strip()]
+    assert cells[0] == "quy-che-mau"
+    assert cells[1] == "2"  # số trang
+    assert cells[-1] == "3"
 
 
 def test_search_without_chunks_explains_what_to_do(workspace):

@@ -27,3 +27,5 @@ data/raw/*
 # Báo cáo eval sinh tự động; báo cáo nào muốn giữ thì copy sang docs/ hoặc ghi vào EXPERIMENTS.md
 eval/reports/*
 !eval/reports/.gitkeep
+# Text thô do `quyche inspect` ghi ra, chỉ để đọc
+data/processed/text/

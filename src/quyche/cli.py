@@ -6,6 +6,7 @@ thay vì traceback.
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -27,6 +28,10 @@ from quyche.text import normalize_text
 
 app = typer.Typer(help="Trợ lý quy chế HUMG.", no_args_is_help=True, add_completion=False)
 console = Console()
+
+# Đếm thô các dòng trông giống tiêu đề Điều. CHỈ để đối chiếu với kết quả của chunker:
+# nó cũng đếm cả tham chiếu bị xuống dòng ("Điều 3 của quy chế này") và Điều trùng số.
+ARTICLE_LIKE_LINE = re.compile(r"^\s*Điều\s+\d+", re.MULTILINE)
 
 
 class Split(StrEnum):
@@ -92,6 +97,40 @@ def ingest() -> None:
         )
     count = write_jsonl(settings.chunks_path, chunks)
     console.print(f"Đã ghi {count} chunk vào {settings.chunks_path}")
+
+
+@app.command()
+def inspect(
+    doc: str | None = typer.Option(None, "--doc", help="Chỉ xem một doc_id"),
+) -> None:
+    """Ghi text thô của từng PDF ra data/processed/text/ để đọc trước khi viết chunker."""
+    settings = get_settings()
+    pdfs = sorted(settings.raw_dir.glob("*.pdf"))
+    if doc is not None:
+        pdfs = [p for p in pdfs if p.stem.lower() == doc]
+    if not pdfs:
+        target = f"'{doc}' trong " if doc else "nào trong "
+        console.print(f"[red]Chưa có PDF {target}[/]{settings.raw_dir}/. Xem docs/data-sources.md.")
+        raise typer.Exit(1)
+
+    out_dir = settings.chunks_path.parent / "text"  # mặc định data/processed/text/
+    out_dir.mkdir(parents=True, exist_ok=True)
+    table = Table("doc_id", "Trang", "Ký tự", "Loại", "Dòng giống tiêu đề Điều (ước lượng)")
+    for pdf in pdfs:
+        d = load_document(pdf)
+        raw = "".join(
+            f"===== Trang {i} =====\n{page}\n\n" for i, page in enumerate(d.pages, start=1)
+        )
+        (out_dir / f"{d.doc_id}.txt").write_text(raw, encoding="utf-8")
+        kind = "[yellow]scan?[/]" if looks_scanned(d) else "chữ"
+        estimate = len(ARTICLE_LIKE_LINE.findall("\n".join(d.pages)))
+        chars = sum(len(page) for page in d.pages)
+        table.add_row(d.doc_id, str(len(d.pages)), str(chars), kind, str(estimate))
+    console.print(table)
+    console.print(
+        f"Text thô đã ghi vào {out_dir}/. Mở ra đọc, ghi lại các ca khó trước khi viết chunker.\n"
+        "[dim]Cột ước lượng chỉ để đối chiếu với `quyche ingest`, không chính xác.[/]"
+    )
 
 
 @app.command()
