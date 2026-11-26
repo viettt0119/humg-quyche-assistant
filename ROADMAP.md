@@ -51,6 +51,7 @@ Mục tiêu: hiểu rõ bài toán, có văn bản và có câu hỏi thật. Ch
 
 Mục tiêu: `uv run quyche ingest` biến mọi văn bản thành các Điều sạch sẽ.
 
+- [ ] Chạy `uv run quyche inspect`, mở các file trong `data/processed/text/`, đọc text thô của từng văn bản. Liệt kê các ca khó **trước khi** viết chunker.
 - [ ] Viết `normalize_text` và `tokenize` trong `src/quyche/text.py`, cho `tests/test_text.py` pass, xóa marker.
 - [ ] Viết `split_into_articles` trong `src/quyche/ingest/chunker.py`, cho `tests/test_chunker.py` pass, xóa marker.
 - [ ] Chạy `uv run quyche ingest` trên PDF thật. Mở `data/processed/chunks.jsonl` và đọc ngẫu nhiên 20 chunk.
@@ -61,7 +62,19 @@ Mục tiêu: `uv run quyche ingest` biến mọi văn bản thành các Điều 
 - Dấu tiếng Việt dạng tổ hợp (NFD): hai chuỗi trông giống hệt nhau nhưng so sánh ra khác.
 - Một file thường gồm **Quyết định ban hành** (Điều 1, 2, 3) và **Quy chế kèm theo** (lại Điều 1, 2...). Lệnh `ingest` sẽ cảnh báo chunk_id trùng. Bạn cần tự quyết cách xử lý (bỏ phần Quyết định, hoặc thêm tiền tố vào chunk_id) và ghi lý do vào EXPERIMENTS.md.
 - Header và footer lặp lại ở mỗi trang (số trang, tên trường) chen vào giữa một Điều.
+- pypdf thường làm **mất dòng trống**: đừng dựa vào dòng trống để tách Điều hay Chương.
 - "Điều 5" xuất hiện giữa câu, hoặc đầu dòng do xuống dòng, không phải Điều mới.
+
+**Cách test khi có file thật (ví dụ 3 văn bản)**
+
+| Tầng | Khi nào | Làm gì |
+|---|---|---|
+| 0. Quan sát | Ngay khi có PDF | `uv run quyche inspect`: số trang, PDF chữ hay scan, số dòng giống tiêu đề Điều (ước lượng thô). Đọc text thô, ghi lại ca khó |
+| 1. Unit test | Khi viết `text.py`, `chunker.py` | Mỗi ca khó: chép một đoạn ngắn vào `tests/fixtures/`, viết test nêu kết quả mong đợi, rồi mới sửa code. `uv run pytest tests/test_chunker.py -m todo` |
+| 2. Tích hợp | Khi unit test đã pass | `uv run quyche ingest`. So "Số Điều" với Điều cuối cùng trong PDF và với số ước lượng của `inspect`; lệch thì tìm hiểu vì sao. Không được có cảnh báo trùng `chunk_id`. Đọc ngẫu nhiên 10 chunk, cùng Điều đầu, Điều cuối, chunk dài nhất và ngắn nhất |
+| 3. Truy xuất | Tuần 2 | Mỗi văn bản khoảng 10 câu hỏi kèm đáp án vào `eval/questions.jsonl`, thử tay bằng `quyche search`, rồi `quyche eval` |
+
+Số ước lượng của `inspect` thường **lớn hơn** số Điều thật, vì nó đếm cả tham chiếu bị xuống dòng ("Điều 3 của quy chế này") và cả phần Quyết định ban hành. Nó chỉ để đối chiếu, không phải đáp án.
 
 **Xong khi:** mọi văn bản dạng chữ đã thành chunk có `doc_id`, số Điều, tiêu đề; test text và chunker đã bỏ marker; có kết luận E1.
 **Gợi ý commit:** `feat(text): chuẩn hóa NFC`, `feat(chunker): tách Điều`, `fix(chunker): bỏ header trang`, `exp: E1 so sánh trích xuất PDF`.

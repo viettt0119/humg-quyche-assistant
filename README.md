@@ -29,6 +29,10 @@ uv sync
 ```
 
 ```bash
+uv run quyche inspect                       # xem text thô từng PDF, PDF chữ hay scan
+```
+
+```bash
 uv run quyche ingest                        # đọc PDF trong data/raw/, chia theo Điều
 ```
 
